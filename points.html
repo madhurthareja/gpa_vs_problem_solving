@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph with Flags</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <h1>GPA vs Problem-Solving Skills</h1>
+    <button id="next-point">Show Next Point</button>
+    <svg width="800" height="600" style="border: 1px solid black;"></svg>
+
+    <script>
+        // Generate 100 random data points
+        const points = [];
+        for (let i = 0; i < 100; i++) {
+            const problemSolving = Math.random() * 10; // x-axis: problem-solving skills
+            const gpa = Math.random() * 10; // y-axis: GPA score
+
+            // Classify the points
+            let color = "red"; // Default: red flag
+            if (problemSolving > 6 && gpa > 6) {
+                color = "green"; // Green flag for good skills and GPA
+            }
+
+            points.push({ x: problemSolving, y: gpa, label: `${i}`, color });
+        }
+
+        // Add intentional mixing
+        for (let i = 0; i < 10; i++) {
+            const problemSolving = Math.random() * 10;
+            const gpa = Math.random() * 10;
+            // Mix green and red classifications for overlap
+            const color = i % 2 === 0 ? "green" : "red";
+            points.push({ x: problemSolving, y: gpa, label: `${i}`, color });
+        }
+
+        // Shuffle points randomly
+        d3.shuffle(points);
+
+        // Set up SVG
+        const svg = d3.select("svg");
+        const width = +svg.attr("width");
+        const height = +svg.attr("height");
+        const margin = 50;
+
+        // Scales for the graph
+        const xScale = d3.scaleLinear().domain([0, 10]).range([margin, width - margin]);
+        const yScale = d3.scaleLinear().domain([0, 10]).range([height - margin, margin]);
+
+        // Axes
+        const xAxis = d3.axisBottom(xScale).ticks(10);
+        const yAxis = d3.axisLeft(yScale).ticks(10);
+
+        svg.append("g")
+            .attr("transform", `translate(0,${height - margin})`)
+            .call(xAxis)
+            .append("text")
+            .attr("x", width / 2)
+            .attr("y", 40)
+            .text("Problem-Solving Skills")
+            .style("font-size", "14px")
+            .style("fill", "black");
+
+        svg.append("g")
+            .attr("transform", `translate(${margin},0)`)
+            .call(yAxis)
+            .append("text")
+            .attr("x", -height / 2)
+            .attr("y", -40)
+            .text("GPA Scores")
+            .style("font-size", "14px")
+            .style("fill", "black")
+            .attr("transform", "rotate(-90)");
+
+        // Counter for showing points
+        let currentIndex = 0;
+
+        // Add button functionality
+        document.getElementById("next-point").addEventListener("click", () => {
+            if (currentIndex < points.length) {
+                const point = points[currentIndex];
+                svg.append("circle")
+                    .attr("cx", xScale(point.x))
+                    .attr("cy", yScale(point.y))
+                    .attr("r", 6)
+                    .attr("fill", point.color)
+                    .attr("opacity", 0.8);
+
+                svg.append("text")
+                    .attr("x", xScale(point.x) + 8)
+                    .attr("y", yScale(point.y) - 8)
+                    .text(point.label)
+                    .style("font-size", "10px")
+                    .style("fill", point.color);
+
+                currentIndex++;
+            } else {
+                alert("All points are shown!");
+            }
+        });
+    </script>
+</body>
+</html>
