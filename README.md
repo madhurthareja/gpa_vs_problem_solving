@@ -1,1 +1,0 @@
-# gpa_vs_problem_solving
