@@ -3,40 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Graph with Flags</title>
+    <title>Linear Classification Game</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
-    <h1>GPA vs Problem-Solving Skills</h1>
+    <h1>Linear Classification Game</h1>
     <button id="next-point">Show Next Point</button>
+    <div id="error-display">
+        <h2>Misclassification Details</h2>
+        <p id="misclassification-percentage">Misclassification Percentage: 0.00%</p>
+        <p id="misclassified-red">Misclassified Red Points: 0</p>
+        <p id="misclassified-green">Misclassified Green Points: 0</p>
+        <p id="converged-percentage">Converged Misclassification Percentage: Calculating...</p>
+        <p id="missclasification-difference">Difference: 0.00%</p>
+    </div>
     <svg width="800" height="600" style="border: 1px solid black;"></svg>
 
     <script>
-        // Generate 100 random data points
-        const points = [];
-        for (let i = 0; i < 100; i++) {
-            const problemSolving = Math.random() * 10; // x-axis: problem-solving skills
-            const gpa = Math.random() * 10; // y-axis: GPA score
+        // Randomize the slope and intercept of the decision boundary
+        const randomSlope = Math.random() * 2 + 0.5; // Random slope between 0.5 and 2.5
+        const randomIntercept = Math.random() * 5; // Random intercept between 0 and 5
+        const lineBoundary = (x) => randomSlope * x + randomIntercept;
 
-            // Classify the points
-            let color = "red"; // Default: red flag
-            if (problemSolving > 6 && gpa > 6) {
-                color = "green"; // Green flag for good skills and GPA
+        // Generate random points with noise (misclassification probability)
+        const points = [];
+        const misclassificationProbability = 0.2; // 20% chance of misclassification
+
+        for (let i = 0; i < 100; i++) {
+            const x = Math.random() * 10; // Problem-solving skills
+            const y = Math.random() * 20; // GPA score
+
+            // Determine actual class based on the line
+            let color = "red"; // Default: below the line
+            if (y > lineBoundary(x)) {
+                color = "green"; // Above the line
             }
 
-            points.push({ x: problemSolving, y: gpa, label: `${i}`, color });
+            // Introduce misclassification based on probability
+            if (Math.random() < misclassificationProbability) {
+                color = color === "red" ? "green" : "red"; // Flip the class
+            }
+
+            points.push({ x, y, label: `${i}`, color });
         }
 
-        // Add intentional mixing
-        for (let i = 0; i < 10; i++) {
-            const problemSolving = Math.random() * 10;
-            const gpa = Math.random() * 10;
-            // Mix green and red classifications for overlap
-            const color = i % 2 === 0 ? "green" : "red";
-            points.push({ x: problemSolving, y: gpa, label: `${i}`, color });
-        }
-
-        // Shuffle points randomly
+        // Shuffle points for random display
         d3.shuffle(points);
 
         // Set up SVG
@@ -47,7 +58,7 @@
 
         // Scales for the graph
         const xScale = d3.scaleLinear().domain([0, 10]).range([margin, width - margin]);
-        const yScale = d3.scaleLinear().domain([0, 10]).range([height - margin, margin]);
+        const yScale = d3.scaleLinear().domain([0, 20]).range([height - margin, margin]);
 
         // Axes
         const xAxis = d3.axisBottom(xScale).ticks(10);
@@ -74,13 +85,66 @@
             .style("fill", "black")
             .attr("transform", "rotate(-90)");
 
-        // Counter for showing points
+        // Draw decision boundary
+        svg.append("line")
+            .attr("x1", xScale(0))
+            .attr("y1", yScale(lineBoundary(0)))
+            .attr("x2", xScale(10))
+            .attr("y2", yScale(lineBoundary(10)))
+            .attr("stroke", "black")
+            .attr("stroke-width", 2)
+            .attr("stroke-dasharray", "5,5");
+
+        // Initialize counters
         let currentIndex = 0;
+        let misclassifiedPoints = 0;
+        let misclassifiedRed = 0;
+        let misclassifiedGreen = 0;
+
+        // Calculate converged misclassification percentage
+        const calculateConvergedPercentage = () => {
+            let totalMisclassified = 0;
+            points.forEach(point => {
+                const isAboveLine = point.y > lineBoundary(point.x);
+                const isMisclassified = (isAboveLine && point.color !== "green") ||
+                                        (!isAboveLine && point.color !== "red");
+                if (isMisclassified) {
+                    totalMisclassified++;
+                }
+            });
+            return ((totalMisclassified / points.length) * 100).toFixed(2);
+        };
+        const convergedPercentage = calculateConvergedPercentage();
+        document.getElementById("converged-percentage").innerText = `Converged Misclassification Percentage: ${convergedPercentage}%`;
 
         // Add button functionality
         document.getElementById("next-point").addEventListener("click", () => {
             if (currentIndex < points.length) {
                 const point = points[currentIndex];
+
+                // Determine misclassification
+                const isAboveLine = point.y > lineBoundary(point.x);
+                const isMisclassified = (isAboveLine && point.color !== "green") ||
+                                        (!isAboveLine && point.color !== "red");
+
+                if (isMisclassified) {
+                    misclassifiedPoints++;
+                    if (point.color === "red") {
+                        misclassifiedRed++;
+                    } else {
+                        misclassifiedGreen++;
+                    }
+                }
+
+                // Update display
+                const misclassificationPercentage = ((misclassifiedPoints / (currentIndex + 1)) * 100).toFixed(2);
+                const absoluteError = (misclassificationPercentage - convergedPercentage).toFixed(2);
+                document.getElementById("misclassification-percentage").innerText = `Misclassification Percentage: ${misclassificationPercentage}%`;
+                document.getElementById("misclassified-red").innerText = `Misclassified Red Points: ${misclassifiedRed}`;
+                document.getElementById("misclassified-green").innerText = `Misclassified Green Points: ${misclassifiedGreen}`;
+                document.getElementById("missclasification-difference").innerText = `Missclasification-Difference: ${absoluteError}%`;
+
+                // Plot the point
                 svg.append("circle")
                     .attr("cx", xScale(point.x))
                     .attr("cy", yScale(point.y))
